@@ -3,7 +3,11 @@
 import { useCallback, useRef, useState } from "react";
 import MaskEditor from "./MaskEditor";
 
-export default function TattooBgRemover() {
+export default function TattooBgRemover({
+  onUseInBody,
+}: {
+  onUseInBody?: (blob: Blob) => void;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("tatuaje");
   const [isDragging, setIsDragging] = useState(false);
@@ -39,7 +43,14 @@ export default function TattooBgRemover() {
   }, []);
 
   if (file) {
-    return <MaskEditor file={file} fileName={fileName} onReset={reset} />;
+    return (
+      <MaskEditor
+        file={file}
+        fileName={fileName}
+        onReset={reset}
+        onUseInBody={onUseInBody}
+      />
+    );
   }
 
   return (

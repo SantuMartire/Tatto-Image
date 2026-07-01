@@ -13,10 +13,12 @@ export default function MaskEditor({
   file,
   fileName,
   onReset,
+  onUseInBody,
 }: {
   file: File;
   fileName: string;
   onReset: () => void;
+  onUseInBody?: (blob: Blob) => void;
 }) {
   const displayRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -359,11 +361,11 @@ export default function MaskEditor({
     displayRef.current?.releasePointerCapture(e.pointerId);
   };
 
-  // ---- Exportar PNG ----
-  const download = useCallback(() => {
+  // ---- Componer el recorte final (source + máscara) en un canvas ----
+  const composite = useCallback((): HTMLCanvasElement | null => {
     const source = sourceCanvasRef.current;
     const mask = maskCanvasRef.current;
-    if (!source || !mask) return;
+    if (!source || !mask) return null;
     const out = document.createElement("canvas");
     out.width = source.width;
     out.height = source.height;
@@ -371,6 +373,12 @@ export default function MaskEditor({
     octx.drawImage(mask, 0, 0);
     octx.globalCompositeOperation = "source-in";
     octx.drawImage(source, 0, 0);
+    return out;
+  }, []);
+
+  const download = useCallback(() => {
+    const out = composite();
+    if (!out) return;
     out.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -380,7 +388,15 @@ export default function MaskEditor({
       a.click();
       URL.revokeObjectURL(url);
     }, "image/png");
-  }, [fileName]);
+  }, [composite, fileName]);
+
+  const useInBody = useCallback(() => {
+    const out = composite();
+    if (!out || !onUseInBody) return;
+    out.toBlob((blob) => {
+      if (blob) onUseInBody(blob);
+    }, "image/png");
+  }, [composite, onUseInBody]);
 
   // Limpieza de rAF pendientes.
   useEffect(() => {
@@ -591,6 +607,14 @@ export default function MaskEditor({
 
       {/* Acciones finales */}
       <div className="flex flex-wrap gap-3">
+        {onUseInBody && (
+          <button
+            onClick={useInBody}
+            className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-6 py-2.5 font-medium text-white hover:bg-violet-700"
+          >
+            Usar en el cuerpo →
+          </button>
+        )}
         <button
           onClick={download}
           className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-2.5 font-medium text-white hover:bg-emerald-700"
